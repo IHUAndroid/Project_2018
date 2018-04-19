@@ -2,7 +2,6 @@ package gr.ihu.test.ihu_project_2018;
 
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -16,11 +15,14 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +36,8 @@ public class ForecastFragment extends Fragment {
             "Thu 5/4 - Rain - 18",
             "Fir 6/4 - Sunny - 32"
     };
+
+    String forecastJsonStr = null;
 
 
     @Override
@@ -51,7 +55,7 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        if(id == R.id.action_refresh){
+        if (id == R.id.action_refresh) {
             AsyncTask<Void, Void, Void> task = new FetchWeatherTask().execute();
             return true;
         }
@@ -63,123 +67,88 @@ public class ForecastFragment extends Fragment {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            // These two need to be declared outside the try/catch
-            // so that they can be closed in the finally block.
-            HttpURLConnection urlConnection = null;
-            BufferedReader reader = null;
-
             // Will contain the raw JSON response as a string.
-            String forecastJsonStr = null;
 
+
+            //MODIFIED FOR CITY OF THESSALONIKI, GREECE
+            String cityCode = "734077";
+            String mode = "json";
+            String units = "metric";
+            String daysCount = "7";
+            String appid = "8cbf55d68127d9483386b81e1ab1cd8d";
+
+            final String baseUrlForDailyForecast = "http://api.openweathermap.org/data/2.5/forecast/daily?";
+
+            final String queryParam = "id";
+            final String formatParam = "mode";
+            final String unitsParam = "units";
+            final String daysParam = "cnt";
+            final String apiKeyParam = "APPID";
+
+            Uri builtUri = Uri.parse(baseUrlForDailyForecast).buildUpon()
+                    .appendQueryParameter(queryParam, cityCode) //params[0]
+                    .appendQueryParameter(formatParam, mode)
+                    .appendQueryParameter(unitsParam, units)
+                    .appendQueryParameter(daysParam, daysCount)
+                    // .appendQueryParameter(apiKeyParam, appid)
+                    .appendQueryParameter(apiKeyParam, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
+                    .build();
+
+            final URL url;
             try {
-                // Construct the URL for the OpenWeatherMap query
-                // Possible parameters are avaiable at OWM's forecast API page, at
-                // http://openweathermap.org/API#forecast
-                //MODIFIED FOR CITY OF THESSALONIKI, GREECE
-                String cityCode = "734077";
-                String mode = "json";
-                String units = "metric";
-                String daysCount = "7";
-                String appid = "8cbf55d68127d9483386b81e1ab1cd8d";
+                url = new URL(builtUri.toString());
+                RequestQueue queue = Volley.newRequestQueue(getContext());
 
-                final String baseUrlForDailyForecast = "http://api.openweathermap.org/data/2.5/forecast/daily?";
-
-                final String queryParam = "id";
-                final String formatParam= "mode";
-                final String unitsParam= "units";
-                final String daysParam = "cnt";
-                final String apiKeyParam = "APPID";
-
-                Uri builtUri = Uri.parse(baseUrlForDailyForecast).buildUpon()
-                        .appendQueryParameter(queryParam,cityCode) //params[0]
-                        .appendQueryParameter(formatParam,mode)
-                        .appendQueryParameter(unitsParam, units)
-                        .appendQueryParameter(daysParam, daysCount)
-                        // .appendQueryParameter(apiKeyParam, appid)
-                        .appendQueryParameter(apiKeyParam, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
-                        .build();
-
-                URL url = new URL(builtUri.toString());
-
-                // Create the request to OpenWeatherMap, and open the connection
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.connect();
-
-                // Read the input stream into a String
-                InputStream inputStream = urlConnection.getInputStream();
-                StringBuffer buffer = new StringBuffer();
-                if (inputStream == null) {
-                    // Nothing to do.
-                    return null;
-                }
-                reader = new BufferedReader(new InputStreamReader(inputStream));
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                    // But it does make debugging a *lot* easier if you print out the completed
-                    // buffer for debugging.
-                    buffer.append(line + "\n");
-                }
-
-                if (buffer.length() == 0) {
-                    // Stream was empty.  No point in parsing.
-                    return null;
-                }
-                forecastJsonStr = buffer.toString();
-
-
-                Log.i("JSON_STRING", forecastJsonStr);
-
-            } catch (IOException e) {
-                Log.e("PlaceholderFragment", "Error ", e);
-                // If the code didn't successfully get the weather data, there's no point in attemping
-                // to parse it.
-                return null;
-            } finally{
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
-                }
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (final IOException e) {
-                        Log.e("PlaceholderFragment", "Error closing stream", e);
+                StringRequest stringRequest = new StringRequest(Request.Method.GET, url.toString(),
+                        new Response.Listener<String>() {
+                            @Override
+                            public void onResponse(String response) {
+                                // Display the first 500 characters of the response string.
+                                Log.i("VOLLEY_Response_is: ", response.substring(0, 500));
+                                forecastJsonStr = response;
+                            }
+                        }, new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("VOLLEY_ERROR", "That didn't work!");
                     }
-                }
+                });
+
+                queue.add(stringRequest);
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
             }
+
             return null;
         }
     }
 
-    @Nullable
-    @Override
-    public View onCreateView(LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+        @Nullable
+        @Override
+        public View onCreateView(LayoutInflater inflater,
+                                 @Nullable ViewGroup container,
+                                 @Nullable Bundle savedInstanceState) {
 
-        View rootView = inflater.inflate(R.layout.fragment_main,
-                container,
-                false);
+            View rootView = inflater.inflate(R.layout.fragment_main,
+                    container,
+                    false);
 
-        List<String> dataList = Arrays.asList(data);
+            List<String> dataList = Arrays.asList(data);
 
-        ArrayAdapter<String> adapter =
-                new ArrayAdapter<>(
-                        getActivity(),
-                        R.layout.list_item_forecast,
-                        R.id.list_item_forecast_text,
-                        dataList
-                );
+            ArrayAdapter<String> adapter =
+                    new ArrayAdapter<>(
+                            getActivity(),
+                            R.layout.list_item_forecast,
+                            R.id.list_item_forecast_text,
+                            dataList
+                    );
 
-        ListView listView = (ListView) rootView.
-                findViewById(R.id.listview_forecast);
-        listView.setAdapter(adapter);
-
-
+            ListView listView = (ListView) rootView.
+                    findViewById(R.id.listview_forecast);
+            listView.setAdapter(adapter);
 
 
-        return rootView;
+            return rootView;
+        }
     }
-}
