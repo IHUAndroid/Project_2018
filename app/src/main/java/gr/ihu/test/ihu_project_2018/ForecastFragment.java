@@ -1,6 +1,8 @@
 package gr.ihu.test.ihu_project_2018;
 
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -74,9 +76,30 @@ public class ForecastFragment extends Fragment {
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
                 //MODIFIED FOR CITY OF THESSALONIKI, GREECE
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/daily?id=734077" +
-                        "&mode=json&units=metric&cnt=7" +
-                        "&appid=8cbf55d68127d9483386b81e1ab1cd8d");
+                String cityCode = "734077";
+                String mode = "json";
+                String units = "metric";
+                String daysCount = "7";
+                String appid = "8cbf55d68127d9483386b81e1ab1cd8d";
+
+                final String baseUrlForDailyForecast = "http://api.openweathermap.org/data/2.5/forecast/daily?";
+
+                final String queryParam = "id";
+                final String formatParam= "mode";
+                final String unitsParam= "units";
+                final String daysParam = "cnt";
+                final String apiKeyParam = "APPID";
+
+                Uri builtUri = Uri.parse(baseUrlForDailyForecast).buildUpon()
+                        .appendQueryParameter(queryParam,cityCode) //params[0]
+                        .appendQueryParameter(formatParam,mode)
+                        .appendQueryParameter(unitsParam, units)
+                        .appendQueryParameter(daysParam, daysCount)
+                        // .appendQueryParameter(apiKeyParam, appid)
+                        .appendQueryParameter(apiKeyParam, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
+                        .build();
+
+                URL url = new URL(builtUri.toString());
 
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
