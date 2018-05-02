@@ -16,6 +16,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,12 +31,10 @@ public class ForecastFragment extends Fragment {
 
     private String[] data = {
             "Mon 2/4 - Sunny - 30 ",
-            "Tue 3/4 - Foggy - 20",
-            "Wed 4/4 - Snow - 2",
-            "Thu 5/4 - Rain - 18",
-            "Fir 6/4 - Sunny - 32"
+            "Tue 3/4 - Foggy - 20"
     };
 
+    private ArrayAdapter<String> adapter;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -52,17 +52,17 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
 
         if(id == R.id.action_refresh){
-            AsyncTask<Void, Void, Void> task = new FetchWeatherTask().execute();
+            AsyncTask<String, Void, String[]> task = new FetchWeatherTask().execute();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected String[] doInBackground(String... params) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -129,14 +129,18 @@ public class ForecastFragment extends Fragment {
                 }
                 forecastJsonStr = buffer.toString();
 
-
                 Log.i("JSON_STRING", forecastJsonStr);
+
+                return JsonParser.getWeatherDataFromJson(forecastJsonStr, Integer.parseInt(daysCount));
 
             } catch (IOException e) {
                 Log.e("PlaceholderFragment", "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping
                 // to parse it.
                 return null;
+            } catch (JSONException e) {
+
+
             } finally{
                 if (urlConnection != null) {
                     urlConnection.disconnect();
@@ -150,6 +154,17 @@ public class ForecastFragment extends Fragment {
                 }
             }
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(String[] strings) {
+            if(strings != null ){
+                adapter.clear();
+                for(String forecast : strings){
+                    adapter.add(forecast);
+                }
+
+            }
         }
     }
 
@@ -165,7 +180,7 @@ public class ForecastFragment extends Fragment {
 
         List<String> dataList = Arrays.asList(data);
 
-        ArrayAdapter<String> adapter =
+        adapter =
                 new ArrayAdapter<>(
                         getActivity(),
                         R.layout.list_item_forecast,
@@ -176,10 +191,8 @@ public class ForecastFragment extends Fragment {
         ListView listView = (ListView) rootView.
                 findViewById(R.id.listview_forecast);
         listView.setAdapter(adapter);
-
-
-
-
         return rootView;
     }
+
+
 }
