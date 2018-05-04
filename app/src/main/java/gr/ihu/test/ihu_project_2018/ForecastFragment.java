@@ -16,12 +16,15 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,6 +37,8 @@ public class ForecastFragment extends Fragment {
             "Thu 5/4 - Rain - 18",
             "Fir 6/4 - Sunny - 32"
     };
+
+    private ArrayAdapter<String> adapter;
 
 
     @Override
@@ -52,17 +57,28 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
 
         if(id == R.id.action_refresh){
-            AsyncTask<Void, Void, Void> task = new FetchWeatherTask().execute();
+            AsyncTask<String, Void, String[]> task = new FetchWeatherTask().execute();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
+
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected void onPostExecute(String[] strings) {
+            if(strings != null) {
+                adapter.clear();
+                for (String forecast : strings) {
+                    adapter.add(forecast);
+                }
+            }
+        }
+
+        @Override
+        protected String[] doInBackground(String...params) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -91,11 +107,10 @@ public class ForecastFragment extends Fragment {
                 final String apiKeyParam = "APPID";
 
                 Uri builtUri = Uri.parse(baseUrlForDailyForecast).buildUpon()
-                        .appendQueryParameter(queryParam,cityCode) //params[0]
-                        .appendQueryParameter(formatParam,mode)
+                        .appendQueryParameter(queryParam, cityCode) //params[0]
+                        .appendQueryParameter(formatParam, mode)
                         .appendQueryParameter(unitsParam, units)
                         .appendQueryParameter(daysParam, daysCount)
-                        // .appendQueryParameter(apiKeyParam, appid)
                         .appendQueryParameter(apiKeyParam, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
                         .build();
 
@@ -129,15 +144,17 @@ public class ForecastFragment extends Fragment {
                 }
                 forecastJsonStr = buffer.toString();
 
-
-                Log.i("JSON_STRING", forecastJsonStr);
+                return JsonParser.getWeatherDataFromJson(forecastJsonStr, 7);
 
             } catch (IOException e) {
                 Log.e("PlaceholderFragment", "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping
                 // to parse it.
                 return null;
-            } finally{
+            } catch (JSONException e) {
+                Log.e("JSON_PARSER", "Json parsing Error");
+            }
+            finally{
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }
@@ -151,6 +168,7 @@ public class ForecastFragment extends Fragment {
             }
             return null;
         }
+
     }
 
     @Nullable
@@ -163,10 +181,9 @@ public class ForecastFragment extends Fragment {
                 container,
                 false);
 
-        List<String> dataList = Arrays.asList(data);
+        List<String> dataList = new ArrayList<>();
 
-        ArrayAdapter<String> adapter =
-                new ArrayAdapter<>(
+        adapter = new ArrayAdapter<>(
                         getActivity(),
                         R.layout.list_item_forecast,
                         R.id.list_item_forecast_text,
@@ -176,6 +193,8 @@ public class ForecastFragment extends Fragment {
         ListView listView = (ListView) rootView.
                 findViewById(R.id.listview_forecast);
         listView.setAdapter(adapter);
+
+
 
 
 
