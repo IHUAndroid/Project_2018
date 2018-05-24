@@ -20,37 +20,40 @@ public class JsonParser {
     private static final String OWM_MIN = "min";
     private static final String OWM_DESCRIPTION = "main";
 
-    public static String[] getWeatherDataFromJson(String forecastJsonStr,
+    public static WeatherInfo[] getWeatherDataFromJson(String forecastJsonStr,
                       int numDays) throws JSONException {
 
         JSONObject forecastJson = new JSONObject(forecastJsonStr);
         JSONArray weatherArray = forecastJson.getJSONArray(OWM_LIST);
-        String[] results = new String[numDays];
+
+        WeatherInfo[] results = new WeatherInfo[numDays];
 
         for(int i=0; i < weatherArray.length(); i++){
-            //Format: Day - Description - low/high
-            // Monday - Rain - 2/15
+            WeatherInfo info = new WeatherInfo();
+
             String day, description, highLowTemp;
 
             JSONObject dayForecast = weatherArray.getJSONObject(i);
             long dtLong = dayForecast.getLong(OWM_DATE);
             day = getHumanDate(dtLong);
+            info.setDate(day);
 
             JSONObject weather = dayForecast.
                                 getJSONArray(OWM_WEATHER).
                                 getJSONObject(0);
 
             description = weather.getString(OWM_DESCRIPTION);
+            info.setDescription(description);
 
             JSONObject tempObj = dayForecast.getJSONObject(OWM_TEMPERATURE);
             int max = (int)tempObj.getDouble(OWM_MAX);
             int min = (int)tempObj.getDouble(OWM_MIN);
 
-            highLowTemp = min + "/" + max;
+            info.setMaxTemp(max);
+            info.setMinTemp(min);
 
-            results[i] = day + " - " + description + " - " + highLowTemp;
-
-            Log.i("WEATHER_JSON", results[i]);
+            results[i] = info;
+            Log.i("WEATHER_JSON", results[i].getDescription());
         }
         return results;
     }

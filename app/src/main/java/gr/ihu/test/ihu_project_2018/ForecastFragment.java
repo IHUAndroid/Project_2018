@@ -1,5 +1,6 @@
 package gr.ihu.test.ihu_project_2018;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -13,8 +14,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONException;
 
@@ -30,15 +33,7 @@ import java.util.List;
 
 public class ForecastFragment extends Fragment {
 
-    private String[] data = {
-            "Mon 2/4 - Sunny - 30 ",
-            "Tue 3/4 - Foggy - 20",
-            "Wed 4/4 - Snow - 2",
-            "Thu 5/4 - Rain - 18",
-            "Fir 6/4 - Sunny - 32"
-    };
-
-    private ArrayAdapter<String> adapter;
+    private ArrayAdapter<WeatherInfo> adapter;
 
 
     @Override
@@ -57,28 +52,27 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
 
         if(id == R.id.action_refresh){
-            AsyncTask<String, Void, String[]> task = new FetchWeatherTask().execute();
+            AsyncTask<String, Void, WeatherInfo[]> task = new FetchWeatherTask().execute();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
 
-    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
-
+    public class FetchWeatherTask extends AsyncTask<String, Void, WeatherInfo[]> {
 
         @Override
-        protected void onPostExecute(String[] strings) {
-            if(strings != null) {
+        protected void onPostExecute(WeatherInfo[] weatherInfos) {
+            if(weatherInfos != null) {
                 adapter.clear();
-                for (String forecast : strings) {
+                for (WeatherInfo forecast : weatherInfos) {
                     adapter.add(forecast);
                 }
             }
         }
 
         @Override
-        protected String[] doInBackground(String...params) {
+        protected WeatherInfo[] doInBackground(String...params) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -181,18 +175,39 @@ public class ForecastFragment extends Fragment {
                 container,
                 false);
 
-        List<String> dataList = new ArrayList<>();
+        List<WeatherInfo> dataList = new ArrayList<>();
 
-        adapter = new ArrayAdapter<>(
+        adapter = new WeatherAdapter(
                         getActivity(),
-                        R.layout.list_item_forecast,
-                        R.id.list_item_forecast_text,
+                      0,
                         dataList
                 );
 
         ListView listView = (ListView) rootView.
                 findViewById(R.id.listview_forecast);
         listView.setAdapter(adapter);
+
+        listView.setOnItemClickListener(
+                new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent,
+                                            View view,
+                                            int position,
+                                            long id) {
+
+                        final WeatherInfo item = adapter.getItem(position);
+
+
+                        Intent intent = new Intent(getActivity(),
+                                DetailActivity.class);
+
+                        intent.putExtra("message", item);
+
+                        startActivity(intent);
+
+                    }
+                }
+        );
 
 
 
